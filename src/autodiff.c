@@ -12,14 +12,46 @@ Value* ad_create(float value, bool has_grad){
     return res;
 }
 
-void ad_destroy(Value* val){
+// void ad_destroy(Value* val){
+//     if (val == NULL) return;
+//     printf("destroying val ptr: %p ", val);
+//     printf("with val: %f op: %s and (left: %p, right: %p)\n", val->data, operators[val->op], val->left_child, val->right_child);
+//     if (val->left_child != NULL) ad_destroy(val->left_child);
+//     if (val->right_child != NULL) ad_destroy(val->right_child);
+//     free(val);
+//     val = NULL;
+// }
+
+bool visited(Value** list, size_t len, Value* val){
+    for (size_t i = 0; i < len; ++i) {
+        if (list[i] == val) return true;
+    }
+    return false;
+}
+
+void traverse_add(Value* val, Value** list, size_t* len, size_t* cap){
     if (val == NULL) return;
-    printf("destroying val ptr: %p ", val);
-    printf("with val: %f op: %s and (left: %p, right: %p)\n", val->data, operators[val->op], val->left_child, val->right_child);
-    if (val->left_child != NULL) ad_destroy(val->left_child);
-    if (val->right_child != NULL) ad_destroy(val->right_child);
-    free(val);
-    val = NULL;
+    if (*len >= *cap){
+        *cap = Extend(*cap);
+        list = realloc(list, sizeof(Value*) * *cap);
+    }
+    if (!visited(list, *len, val)) 
+        list[(*len)++] = val;
+    if (val->left_child != NULL) 
+        traverse_add(val->left_child, list, len, cap);
+    if (val->right_child != NULL) 
+        traverse_add(val->right_child, list, len, cap);
+}
+
+void ad_destroy(Value* val){
+    Value** list = malloc(sizeof(Value*) * 8);
+    size_t len = 0;
+    size_t cap = 8;
+    traverse_add(val, list, &len, &cap);
+    for (size_t i = 0; i < len; ++i){
+        free(list[i]);
+    }
+    free(list);
 }
 
 Value* ad_add(Value* a, Value* b){
@@ -94,13 +126,13 @@ void ad_reverse(Value* y){
 void _ad_print_tree(Value* y, size_t indent){
     if (y == NULL) return;
     for (size_t i = 0; i < indent; ++i) printf(" ");
-    printf("[%s] node (data: %f, grad: %f)   %p\n", operators[y->op], y->data, y->grad, y);
-    _ad_print_tree(y->left_child, indent+2);
-    _ad_print_tree(y->right_child, indent+2);
+    printf("[%s] node (data: %g, grad: %g)\n", operators[y->op], y->data, y->grad);
+    _ad_print_tree(y->left_child, indent+4);
+    _ad_print_tree(y->right_child, indent+4);
 }
 
 void ad_print_tree(Value* y){
-    printf("------------- Computation tree -------------\n");
+    printf("------------- Computation graph -------------\n");
     _ad_print_tree(y, 0);
     printf("--------------------------------------------\n");
 }

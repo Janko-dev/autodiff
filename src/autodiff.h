@@ -6,6 +6,8 @@
 #include <math.h>
 #include <stdbool.h>
 
+#define Extend(n) (n == 0 ? 8 : (n*2))
+
 typedef enum {
     ADD,
     MUL,

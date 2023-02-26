@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include "autodiff.h"
 
-#define Extend(n) (n == 0 ? 8 : (n*2))
-
 typedef struct {
     size_t num_inputs;
     Value** w;

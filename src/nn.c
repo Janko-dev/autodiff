@@ -86,20 +86,20 @@ MLP* create_nn(){
     return result;
 }
 
-void destroy_nn(MLP* nn){
-    for (size_t i = 0; i < nn->num_layers; ++i){
-        for (size_t j = 0; j < nn->layers[i].num_neurons; ++j){
-            ad_destroy(nn->layers[i].neurons[j].b);
-            for (size_t k = 0; k < nn->layers[i].neurons[j].num_inputs; ++k){
-                ad_destroy(nn->layers[i].neurons[j].w[k]);
-            }
-            free(nn->layers[i].neurons[i].w);
-        }
-        free(nn->layers[i].neurons);
-        free(nn->layers + i);
-    }
-    free(nn);
-}
+// void destroy_nn(MLP* nn){
+//     for (size_t i = 0; i < nn->num_layers; ++i){
+//         for (size_t j = 0; j < nn->layers[i].num_neurons; ++j){
+//             ad_destroy(nn->layers[i].neurons[j].b);
+//             for (size_t k = 0; k < nn->layers[i].neurons[j].num_inputs; ++k){
+//                 ad_destroy(nn->layers[i].neurons[j].w[k]);
+//             }
+//             free(nn->layers[i].neurons[i].w);
+//         }
+//         free(nn->layers[i].neurons);
+//         free(nn->layers + i);
+//     }
+//     free(nn);
+// }
 
 void init_layer(Layer* layer, size_t num_inputs, size_t num_neurons){
     layer->num_neurons = num_neurons;

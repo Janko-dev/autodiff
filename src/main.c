@@ -88,12 +88,35 @@ int main(void){
     // destroy_vector(vec);
     // destroy_matrix(mat);
 
-    Value* a = ad_create(2.0f, true); 
-    Value* b = ad_create(3.0f, true);
-    b = ad_mul(a, b);
-    b = ad_mul(b, b);
-    ad_print_tree(b);
-    ad_destroy(b);
+    // Value* a = ad_create(2.0f, true); 
+    // Value* b = ad_create(3.0f, true);
+    // Value* c = ad_create(4.0f, true);
+
+    // Value* d = ad_add(a, b);
+    // Value* e = ad_mul(d, c);
+
+    // ad_reverse(e);
+    // ad_print_tree(e);
+    // ad_destroy(e);
+
+    Value* x1 = ad_create(-1.0f, false);
+    Value* x2 = ad_create(2.0f, false);
+    
+    Value* w1 = ad_create(4.0f, true);
+    Value* w2 = ad_create(-2.0f, true);
+    Value* b  = ad_create(.5f, true);
+    
+    Value* xw1 = ad_mul(x1, w1);
+    Value* xw2 = ad_mul(x2, w2);
+    Value* xw  = ad_add(xw1, xw2);
+    Value* xwb = ad_add(xw, b);
+    
+    Value* y = ad_tanh(xwb);
+
+    ad_reverse(y);
+    ad_print_tree(y);
+
+    ad_destroy(y);
     
     return 0;
 }
