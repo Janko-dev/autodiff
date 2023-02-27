@@ -8,9 +8,11 @@ Automatic differentiation (or simply `autodiff`) is the key method used by sophi
 Generally, we are used to computing gradients based on differentiating the symbolic expression of a function $f(x)$ to another expression that is the derivative of $f$. For instance, $f(x) = x^2$ can be differentiated, which results in $f'(x) = 2x$. Symbolically parsing and transforming functions into its derivative is not scalable as the functions grow in size. Take for instance a moderately sized neural network, which consists of possibly hundreds of function compositions that would result in a massive symbolic expression. The derivative of which is not feasable to compute using symbolic differentiation. Thus, this approach is rejected for computing gradients. 
 
 Another method that we can use is the limit definition of the derivative. That is, the following limit.
+
 $$
     \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}
 $$
+
 This is very easy to compute. We just choose a small value for `h` and plug it into the formula. However, this will not be accurate as we are limited to the finite size of floating point values. 
 
 At last, consider automatic differentiation, which is neither symbolic differentiation nor uses the limit definition. Rather, it uses the elementary building blocks of simple mathematical expressions and chains them together using the chain rule of calculus. In the `autodiff.c` file, the `Value` structure is used as a wrapper for arbitrary float values. Using the functions provided in the API prefixed with `ad_`, one can build the computation graph. 
