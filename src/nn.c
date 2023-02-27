@@ -121,6 +121,7 @@ void forward(MLP* nn, Vector* xs, Vector* out){
 }
 
 float fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
+    float ret;
     Vector xs = create_vector(X_size);
     for (size_t i = 0; i < X_size; ++i){
         xs.data[i]->data = X[i];
@@ -176,9 +177,10 @@ float fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
 
     destroy_vector(xs);
     destroy_vector(ys);
+    ret = loss->data;
     free(loss);
 
-    return loss->data;
+    return ret;
 }
 
 void print_nn(MLP* nn){
