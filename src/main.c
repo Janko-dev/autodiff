@@ -1,9 +1,9 @@
-// #include "autodiff.h"
 #include "nn.h"
 #include <time.h>
 
 #define TRAINING_SIZE 4
 
+// Input dataset for the XOR problem 
 float X[TRAINING_SIZE][2] = {
     {0.0f, 0.0f},
     {1.0f, 0.0f},
@@ -11,6 +11,7 @@ float X[TRAINING_SIZE][2] = {
     {1.0f, 1.0f}
 };
 
+// Ground truth dataset for the XOR problem 
 float Y[TRAINING_SIZE] = {
     0.0f, 
     1.0f,
@@ -20,103 +21,31 @@ float Y[TRAINING_SIZE] = {
 
 int main(void){
 
-    // Value x1, x2, w1, w2, bias, xw1, xw2, xw1xw2, n, out, diff, loss;
+    srand(time(NULL));
 
-    // w1 = VAL(2.0f);
-    // w2 = VAL(-0.5f);
-    // bias = VAL(1.0f);
-    // float learning_rate = 0.01;
-
-    // for (size_t j = 0; j < 20; ++j){
-
-    //     for (size_t i = 0; i < 2; ++i){
-    //         x1 = VAL(dataset[i]);
-    //         x2 = VAL(dataset[i+1]);
-            
-    //         xw1 = ad_mul(&x1, &w1);
-    //         xw2 = ad_mul(&x2, &w2);
-            
-    //         xw1xw2 = ad_add(&xw1, &xw2);
-    //         n = ad_add(&xw1xw2, &bias);
-    //         out = ad_tanh(&n);
-
-    //         diff = ad_add(&VAL(-dataset[i+2]), &out);
-    //         loss = ad_pow(&diff, &VAL(2));
-            
-    //         ad_reverse(&loss);
-    //         ad_print_tree(&loss);
-
-    //         w1.data += learning_rate * w1.grad;
-    //         w2.data += learning_rate * w2.grad;
-    //         bias.data += learning_rate * bias.grad;
-    //     }
-    // }
-
-    // srand(time(NULL));
-    // MLP* nn = create_nn();
-    // add_layer(nn, 2, 2);
-    // add_layer(nn, 2, 1);
-    // // fit(nn, X, TRAINING_SIZE, Y, TRAINING_SIZE);
+    // Initialise multi-layer perceptron
+    MLP nn = {0};
+    float learning_rate = 0.05f;
+    init_nn(&nn, learning_rate);
     
-    // destroy_nn(nn);
+    // add layers of neurons 
+    add_layer(&nn, 2, 4);
+    add_layer(&nn, 4, 4);
+    add_layer(&nn, 4, 1);
+    print_nn(&nn);
 
-    // Value* a = ad_create(3.0f);
-    // Value* b = ad_create(5.0f);
-    // a = ad_mul(a, b);
-    // ad_reverse(a);
-    // ad_print_tree(a);
-    // ad_destroy(a);
+    // Train model and print loss
+    printf("Training start...\n");
+    for (size_t i = 0; i < 10; ++i){
+        float loss = 0;
+        for (size_t j = 0; j < TRAINING_SIZE; ++j){
+            loss += fit(&nn, X[j], 2, Y+j, 1);
+        }
+        printf("Average loss: %f\n", loss/TRAINING_SIZE);
+    }
+    printf("...Training end\n");
 
-    // Matrix mat = create_matrix(3, 2, true);
-    // Vector vec = create_vector(2, true);
-
-    // print_mat(mat);
-    // print_vec(vec);
-
-    // Vector output = mat_vec_prod(mat, vec);
-    // print_vec(output);
-
-    // // ad_print_tree(output.data[0]);
-    // ad_print_tree(output.data[1]);
-    // // ad_reverse(output.data[1]);
-    // // ad_print_tree(output.data[1]);
-    // // ad_print_tree(output.data[2]);
-    // destroy_vector(output);
-    // printf("(%p, %p)\n", output.data[0]->left_child, output.data[0]->right_child);
-    // printf("(%p, %p)\n", output.data[1]->left_child, output.data[1]->right_child);
-    // printf("(%p, %p)\n", output.data[2]->left_child, output.data[2]->right_child);
-    // destroy_vector(vec);
-    // destroy_matrix(mat);
-
-    // Value* a = ad_create(2.0f, true); 
-    // Value* b = ad_create(3.0f, true);
-    // Value* c = ad_create(4.0f, true);
-
-    // Value* d = ad_add(a, b);
-    // Value* e = ad_mul(d, c);
-
-    // ad_reverse(e);
-    // ad_print_tree(e);
-    // ad_destroy(e);
-
-    Value* x1 = ad_create(-1.0f, false);
-    Value* x2 = ad_create(2.0f, false);
-    
-    Value* w1 = ad_create(4.0f, true);
-    Value* w2 = ad_create(-2.0f, true);
-    Value* b  = ad_create(.5f, true);
-    
-    Value* xw1 = ad_mul(x1, w1);
-    Value* xw2 = ad_mul(x2, w2);
-    Value* xw  = ad_add(xw1, xw2);
-    Value* xwb = ad_add(xw, b);
-    
-    Value* y = ad_tanh(xwb);
-
-    ad_reverse(y);
-    ad_print_tree(y);
-
-    ad_destroy(y);
+    destroy_nn(&nn);
     
     return 0;
 }

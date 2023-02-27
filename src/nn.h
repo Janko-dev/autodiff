@@ -5,12 +5,6 @@
 #include "autodiff.h"
 
 typedef struct {
-    size_t num_inputs;
-    Value** w;
-    Value* b;
-} Neuron;
-
-typedef struct {
     Value** data;
     size_t rows;
 } Vector;
@@ -22,11 +16,11 @@ typedef struct {
 } Matrix;
 
 typedef struct {
-    Neuron* neurons;
-    size_t num_neurons;
+    Matrix weights;
+    Vector biases;
 } Layer;
 
-// Multi-Layer Perceptron
+// Multi-Layer Perceptron struct
 typedef struct {
     Layer* layers;
     size_t num_layers;
@@ -34,22 +28,18 @@ typedef struct {
     float learning_rate;
 } MLP;
 
-// Neuron* create_neuron(size_t num_inputs);
-// void destroy_neuron(Neuron* neuron);
-
-MLP* create_nn();
+// MLP API
+void init_nn(MLP* nn, float learning_rate);
 void destroy_nn(MLP* nn);
-
 void add_layer(MLP* nn, size_t num_inputs, size_t num_neurons);
-void fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size);
-// void predict(NeuralNetwork* nn, )
+float fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size);
+void print_nn(MLP* nn);
 
-Matrix create_matrix(size_t rows, size_t cols, bool has_grad);
+// Linear algebra API
+Matrix create_matrix(size_t rows, size_t cols);
 void destroy_matrix(Matrix mat);
-
-Vector create_vector(size_t rows, bool has_grad);
+Vector create_vector(size_t rows);
 void destroy_vector(Vector vec);
-
 Vector mat_vec_prod(Matrix mat, Vector vec);
 
 void print_mat(Matrix mat);

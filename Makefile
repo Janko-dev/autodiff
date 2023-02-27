@@ -4,5 +4,5 @@ SRC = src/
 IN = $(SRC)autodiff.c $(SRC)nn.c $(SRC)main.c
 OUT = autodiff
 
-make:
+make: $(IN)
 	$(CC) $(IN) -o $(OUT) $(CFLAGS)

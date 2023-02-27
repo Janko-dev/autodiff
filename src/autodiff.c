@@ -1,26 +1,15 @@
 #include "autodiff.h"
 
 const char* operators[] = {
-    "add ", "mul ", "pow ", "tanh", "noop"
+    "add ", "sub ", "mul ", "pow ", "tanh", "cons"
 };
 
-Value* ad_create(float value, bool has_grad){
+Value* ad_create(float value){
     Value* res = calloc(1, sizeof(Value));
-    res->has_grad = has_grad;
     res->data = value;
     res->op = COUNT;
     return res;
 }
-
-// void ad_destroy(Value* val){
-//     if (val == NULL) return;
-//     printf("destroying val ptr: %p ", val);
-//     printf("with val: %f op: %s and (left: %p, right: %p)\n", val->data, operators[val->op], val->left_child, val->right_child);
-//     if (val->left_child != NULL) ad_destroy(val->left_child);
-//     if (val->right_child != NULL) ad_destroy(val->right_child);
-//     free(val);
-//     val = NULL;
-// }
 
 bool visited(Value** list, size_t len, Value* val){
     for (size_t i = 0; i < len; ++i) {
@@ -55,15 +44,23 @@ void ad_destroy(Value* val){
 }
 
 Value* ad_add(Value* a, Value* b){
-    Value* out = ad_create(a->data + b->data, a->has_grad + b->has_grad);
+    Value* out = ad_create(a->data + b->data);
     out->left_child = a;
     out->right_child = b;
     out->op = ADD;
     return out;
 }
 
+Value* ad_sub(Value* a, Value* b){
+    Value* out = ad_create(a->data - b->data);
+    out->left_child = a;
+    out->right_child = b;
+    out->op = SUB;
+    return out;
+}
+
 Value* ad_mul(Value* a, Value* b){
-    Value* out = ad_create(a->data * b->data, a->has_grad + b->has_grad);
+    Value* out = ad_create(a->data * b->data);
     out->left_child = a;
     out->right_child = b;
     out->op = MUL;
@@ -71,7 +68,7 @@ Value* ad_mul(Value* a, Value* b){
 }
 
 Value* ad_pow(Value* a, Value* b){
-    Value* out = ad_create(pow(a->data, b->data), a->has_grad + b->has_grad);
+    Value* out = ad_create(pow(a->data, b->data));
     out->left_child = a;
     out->right_child = b;
     out->op = POW;
@@ -79,24 +76,18 @@ Value* ad_pow(Value* a, Value* b){
 }
 
 Value* ad_tanh(Value* a){
-    Value* out = ad_create(tanh(a->data), a->has_grad);
+    Value* out = ad_create(tanh(a->data));
     out->left_child = a;
     out->op = TANH;
     return out;
 }
 
-Value* ad_dot_product(Value** xs, Value** w, size_t num){
-    Value* out = ad_create(0.0f, true);
-    for (size_t i = 0; i < num; ++i){
-        Value* xw = ad_mul(xs[i], w[i]);
-        out = ad_add(xw, out);
-    }
-    return out;
-}
-
 void _ad_reverse(Value* y){
-    if (!y->has_grad) return;
     switch (y->op){
+        case SUB: {
+            y->left_child->grad += y->grad * 1.0f;
+            y->right_child->grad += y->grad * -1.0f;
+        } break;
         case ADD: {
             y->left_child->grad += y->grad * 1.0f;
             y->right_child->grad += y->grad * 1.0f;
