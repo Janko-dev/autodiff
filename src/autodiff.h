@@ -20,38 +20,41 @@ typedef enum {
 } OpType;
 
 // Value struct behaving like a node in a graph
-// the left/right child node is used for binary operators, 
-// while only the left child is used for unary operators
-typedef struct Value Value;
-struct Value{
+typedef struct {
     float data;
     float grad;
     OpType op;
-    Value* left_child;
-    Value* right_child;
-};
+    size_t left_child;
+    size_t right_child;
+} Value;
 
-// Macro for allocating value on the stack
-#define VAL(d) (Value){.data=(d), .grad=0.0, .op=COUNT, .left_child=NULL, .right_child=NULL}
+typedef struct {
+    Value* val_buf;
+    size_t count;
+    size_t cap;
+} Tape;
+
+#define GET(v) tp->val_buf[(v)]
+#define INIT_TAPE_SIZE 8
+
+void init_tape(Tape* tape);
+void destroy_tape(Tape* tape);
+void ad_print_tape(Tape* tp);
 
 // Create a differentiable value 
-Value* ad_create(float value);
-
-// Destroy a differentiable value
-// Note: this function will also destroy every connected node
-void ad_destroy(Value* val);
+size_t ad_create(Tape* tp, float value);
 
 // autodiff API
-Value* ad_add(Value* a, Value* b);
-Value* ad_sub(Value* a, Value* b);
-Value* ad_mul(Value* a, Value* b);
-Value* ad_pow(Value* a, Value* b);
-Value* ad_tanh(Value* a);
+size_t ad_add(Tape* tp, size_t a, size_t b);
+size_t ad_sub(Tape* tp, size_t a, size_t b);
+size_t ad_mul(Tape* tp, size_t a, size_t b);
+size_t ad_pow(Tape* tp, size_t a, size_t b);
+size_t ad_tanh(Tape* tp, size_t a);
 
 // Compute gradients of value 
-void ad_reverse(Value* y);
+void ad_reverse(Tape* tp, size_t y);
 // Print computation tree
-void ad_print_tree(Value* y);
+void ad_print_tree(Tape* tp, size_t y);
 
 #endif //_AUTODIFF_H
 
