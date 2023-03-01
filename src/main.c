@@ -1,5 +1,4 @@
-#include "nn.h"
-#include <time.h>
+#include "mlp.h"
 
 #define TRAINING_SIZE 4
 
@@ -21,67 +20,50 @@ float Y[TRAINING_SIZE] = {
 
 int main(void){
 
-    // char* buf = malloc(10);
-    // for (size_t i = 0; i < 10; ++i)
-    //     buf[i] = 'a' + i;
-    // buf[9] = '\0';
-    // printf("buf <%s>\n", buf);
-
-    // buf = realloc(buf, 20);
-    // for (size_t i = 9; i < 20; ++i)
-    //     buf[i] = 'a' + i;
-    // buf[19] = '\0';
-    // printf("buf <%s>\n", buf);
-
-    Tape tp = {0};
-    init_tape(&tp);
-
-    size_t x1 = ad_create(&tp, 3.0f);
-    size_t x2 = ad_create(&tp, 5.0f);
+    // Initialise multi-layer perceptron
+    MLP nn = {0};
+    float learning_rate = 0.1f;
+    mlp_init(&nn, learning_rate);
     
-    size_t w1 = ad_create(&tp, -1.0f);
-    size_t w2 = ad_create(&tp, 0.5f);
-    size_t b  = ad_create(&tp, 2.0f);
+    // Add layers of neurons 
+    mlp_add_layer(&nn, 2, 6, "sigm");
+    mlp_add_layer(&nn, 6, 8, "relu");
+    mlp_add_layer(&nn, 8, 1, "relu");
 
-    size_t y = ad_tanh(&tp, 
-        ad_add(&tp, 
-            b, 
-            ad_add(&tp, 
-                ad_mul(&tp, x1, w1),
-                ad_mul(&tp, x2, w2)
-            ) 
-        )
-    );
-    
-    ad_reverse(&tp, y);
-    ad_print_tree(&tp, y);
+    mlp_print(&nn);
 
-    destroy_tape(&tp);
-    // srand(time(NULL));
+    // Train model and print loss
+    printf("Training start...\n");
+    #define BATCH_SIZE 40
+    for (size_t n = 0; n < 50; ++n){
+        float loss = 0.0f;
+        for (size_t i = 0; i < BATCH_SIZE; ++i){
+            // float loss = 0;
+            size_t index = i % TRAINING_SIZE;
+            loss += mlp_fit(&nn, X[index], 2, Y+index, 1);
+            // for (size_t j = 0; j < TRAINING_SIZE; ++j){
+            // }
+        }
+        printf("Average loss: %g\n", loss/BATCH_SIZE);
+    }    
+    printf("...Training end\n");
 
-    // // Initialise multi-layer perceptron
-    // MLP nn = {0};
-    // float learning_rate = 0.05f;
-    // init_nn(&nn, learning_rate);
-    
-    // // add layers of neurons 
-    // add_layer(&nn, 2, 4);
-    // add_layer(&nn, 4, 4);
-    // add_layer(&nn, 4, 1);
-    // print_nn(&nn);
+    // Prediction
+    float out1, out2, out3, out4;
+    mlp_predict(&nn, X[0], 2, &out1, 1);
+    mlp_predict(&nn, X[1], 2, &out2, 1);
+    mlp_predict(&nn, X[2], 2, &out3, 1);
+    mlp_predict(&nn, X[3], 2, &out4, 1);
 
-    // // Train model and print loss
-    // printf("Training start...\n");
-    // for (size_t i = 0; i < 10; ++i){
-    //     float loss = 0;
-    //     for (size_t j = 0; j < TRAINING_SIZE; ++j){
-    //         loss += fit(&nn, X[j], 2, Y+j, 1);
-    //     }
-    //     printf("Average loss: %f\n", loss/TRAINING_SIZE);
-    // }
-    // printf("...Training end\n");
+    printf("Prediction for input {0, 0} is %f\n", out1);
+    printf("Prediction for input {1, 0} is %f\n", out2);
+    printf("Prediction for input {0, 1} is %f\n", out3);
+    printf("Prediction for input {1, 1} is %f\n", out4);
 
-    // destroy_nn(&nn);
+    ad_print_tape(&nn.params);
+
+    // Destroy model 
+    mlp_destroy(&nn);
     
     return 0;
 }

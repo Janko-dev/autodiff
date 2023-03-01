@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "autodiff.h": "c"
+        "autodiff.h": "c",
+        "nn.h": "c",
+        "mlp.h": "c"
     }
 }
