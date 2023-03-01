@@ -1,20 +1,25 @@
 #include "nn.h"
+#include "autodiff.h"
+#include <stddef.h>
 
-// // Returns a floating point number between -1 and 1
-// float nn_rand(){
-//     return ((float)rand() / (float)RAND_MAX) * 2.0 - 1.0;
-// }
+// Returns a floating point number between -1 and 1
+float nn_rand(){
+    return ((float)rand() / (float)RAND_MAX) * 2.0 - 1.0;
+}
 
-// Vector create_vector(size_t rows) {
-//     Value** data = calloc(rows, sizeof(Value*));
-//     for (size_t i = 0; i < rows; ++i){
-//         data[i] = ad_create(nn_rand());
-//     }
-//     return (Vector){
-//         .rows = rows,
-//         .data = data
-//     };
-// }
+Vector create_vector(Tape* tp, size_t rows) {
+    
+    size_t ptr = ad_create(tp, nn_rand());
+    
+    for (size_t i = 1; i < rows; ++i){
+        ad_create(tp, nn_rand());
+    }
+
+    return (Vector){
+        .rows = rows,
+        .ptr = ptr
+    };
+}
 
 // void destroy_vector(Vector vec){
 //     for (size_t i = 0; i < vec.rows; ++i){
@@ -23,17 +28,18 @@
 //     free(vec.data);
 // }
 
-// Matrix create_matrix(size_t rows, size_t cols) {
-//     Value** data = calloc(rows*cols, sizeof(Value*));
-//     for (size_t i = 0; i < rows*cols; ++i){
-//         data[i] = ad_create(nn_rand());
-//     }
-//     return (Matrix){
-//         .rows = rows,
-//         .cols = cols,
-//         .data = data
-//     };
-// }
+Matrix create_matrix(Tape* tp, size_t rows, size_t cols) {
+    
+    size_t ptr = ad_create(tp, nn_rand());
+    for (size_t i = 0; i < rows*cols; ++i){
+        ad_create(tp, nn_rand());
+    }
+    return (Matrix){
+        .rows = rows,
+        .cols = cols,
+        .ptr = ptr
+    };
+}
 
 // void destroy_matrix(Matrix mat){
 //     for (size_t i = 0; i < mat.cols*mat.rows; ++i)
@@ -41,27 +47,32 @@
 //     free(mat.data);
 // }
 
-// Vector mat_vec_prod(Matrix mat, Vector vec){
+Vector mat_vec_prod(Tape* tp, Matrix mat, Vector vec){
 
-//     if (mat.cols != vec.rows) {
-//         fprintf(stderr, "Columns of matrix do not match rows of vector\n");
-//         exit(1);
-//     }
+    if (mat.cols != vec.rows) {
+        fprintf(stderr, "Columns of matrix do not match rows of vector\n");
+        exit(1);
+    }
 
-//     Value** output = calloc(mat.rows, sizeof(Value*));
-//     for (size_t i = 0; i < mat.rows; ++i){
-//         Value* res = ad_create(0.0f);
-//         for (size_t j = 0; j < mat.cols; ++j){
-//             Value* mv = ad_mul(mat.data[j*mat.rows+i], vec.data[j]);
-//             res = ad_add(res, mv);
-//         }
-//         output[i] = res;
-//     }
-//     return (Vector){
-//         .data = output,
-//         .rows = mat.rows
-//     };
-// }
+    Vector out = create_vector(tp, mat.rows);
+    for (size_t i = 0; i < mat.rows; ++i){
+        size_t res = ad_create(tp, 0.0f);
+        for (size_t j = 0; j < mat.cols; ++j){
+            res = ad_add(tp, 
+                    res,
+                    ad_mul(tp, 
+                        mat.ptr + j*mat.rows + i,
+                        vec.ptr + j)
+                    );
+        }
+        GET(out.ptr + i).
+        output[i] = res;
+    }
+    return (Vector){
+        .data = output,
+        .rows = mat.rows
+    };
+}
 
 // void print_mat(Matrix mat){
 //     printf("shape (%d, %d)\n", mat.rows, mat.cols);
@@ -79,12 +90,13 @@
 //         printf("[%f]\n", vec.data[i]->data);
 // }
 
-// void init_nn(MLP* nn, float learning_rate){
-//     nn->learning_rate = learning_rate;
-//     nn->num_layers = 0;
-//     nn->max_layers = 0;
-//     nn->layers = NULL;
-// }
+void init_nn(MLP* nn, float learning_rate){
+    nn->learning_rate = learning_rate;
+    init_tape(&nn->data_tp);
+    nn->num_layers = 0;
+    nn->max_layers = 0;
+    nn->layers = NULL;
+}
 
 // void destroy_nn(MLP* nn){
 //     for (size_t i = 0; i < nn->num_layers; ++i){
