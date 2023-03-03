@@ -144,31 +144,60 @@ Vector mlp_forward_pass(MLP* nn, Tape* tp, Vector xs){
     return out;
 }
 
-float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
+Vector _predict(MLP* nn, Tape* tp, float* xs, size_t xs_size){
     
-    Tape tp = {0};
-    ad_init_tape(&tp);
-
     // Copy over model params into new tape 
     for (size_t i = 1; i < nn->params.count; ++i){
-        ad_create(&tp, nn->params.val_buf[i].data);
+        ad_create(tp, nn->params.val_buf[i].data);
     }
     
     // Create and fill input vector
-    Vector xs = mlp_create_vector(&tp, X_size);
-    for (size_t i = 0; i < X_size; ++i){
-        tp.val_buf[xs.ptr + i].data = X[i];
+    Vector xs_vec = mlp_create_vector(tp, xs_size);
+    for (size_t i = 0; i < xs_size; ++i){
+        tp->val_buf[xs_vec.ptr + i].data = xs[i];
     }
+
+    // Forward pass
+    Vector out = mlp_forward_pass(nn, tp, xs_vec);
+    return out;
+}
+
+float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
+    
+    // // Copy over model params into new tape 
+    // Tape tp = {0};
+    // ad_init_tape(&tp);
+    // for (size_t i = 1; i < nn->params.count; ++i){
+    //     ad_create(&tp, nn->params.val_buf[i].data);
+    // }
+    
+    // // Create and fill input vector
+    // Vector xs = mlp_create_vector(&tp, X_size);
+    // for (size_t i = 0; i < X_size; ++i){
+    //     tp.val_buf[xs.ptr + i].data = X[i];
+    // }
+
+    // // Create and fill ground truth vector
+    // Vector ys = mlp_create_vector(&tp, Y_size);
+    // for (size_t i = 0; i < Y_size; ++i){
+    //     tp.val_buf[ys.ptr + i].data = Y[i];
+    // }
+
+    // // Forward pass
+    // Vector out = mlp_forward_pass(nn, &tp, xs);
+
+
+    Tape tp = {0};
+    ad_init_tape(&tp);
+    
+    Vector out = _predict(nn, &tp, X, X_size);
 
     // Create and fill ground truth vector
     Vector ys = mlp_create_vector(&tp, Y_size);
     for (size_t i = 0; i < Y_size; ++i){
         tp.val_buf[ys.ptr + i].data = Y[i];
     }
-
-    // Forward pass
-    Vector out = mlp_forward_pass(nn, &tp, xs);
-
+    
     // Compute mean squared error
     size_t loss = ad_create(&tp, 0.0f);
     for (size_t i = 0; i < out.rows; ++i){
@@ -180,10 +209,13 @@ float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
             )
         );
     }
+
     loss = ad_mul(&tp, 
-        loss, 
+        loss,
         ad_create(&tp, 1.0f/(float)out.rows)
     );
+
+    printf("ASSERT out (%f), target (%f), loss (%f)\n", tp.val_buf[out.ptr].data, tp.val_buf[ys.ptr].data, tp.val_buf[loss].data);
     
     // Backpropagation with autodiff
     ad_reverse(&tp, loss);
@@ -207,23 +239,30 @@ void mlp_predict(MLP* nn, float* xs, size_t xs_size, float* out, size_t out_size
     Tape tp = {0};
     ad_init_tape(&tp);
 
-    // Copy over model params into new tape 
-    for (size_t i = 1; i < nn->params.count; ++i){
-        ad_create(&tp, nn->params.val_buf[i].data);
-    }
+    // // Copy over model params into new tape 
+    // for (size_t i = 1; i < nn->params.count; ++i){
+    //     ad_create(&tp, nn->params.val_buf[i].data);
+    // }
     
-    // Create and fill input vector
-    Vector xs_vec = mlp_create_vector(&tp, xs_size);
-    for (size_t i = 0; i < xs_size; ++i){
-        tp.val_buf[xs_vec.ptr + i].data = xs[i];
-    }
+    // // Create and fill input vector
+    // Vector xs_vec = mlp_create_vector(&tp, xs_size);
+    // for (size_t i = 0; i < xs_size; ++i){
+    //     tp.val_buf[xs_vec.ptr + i].data = xs[i];
+    // }
 
-    // Forward pass
-    Vector out_vec = mlp_forward_pass(nn, &tp, xs_vec);
+    // // Forward pass
+    // Vector out_vec = mlp_forward_pass(nn, &tp, xs_vec);
+
+
+    Vector out_vec = _predict(nn, &tp, xs, xs_size);
+    
+    printf("ASSERT out (%f), target (%d), input (%g, %g)\n", tp.val_buf[out_vec.ptr].data, (size_t)xs[0] ^ (size_t)xs[1], xs[0], xs[1]);
 
     for (size_t i = 0; i < out_size; ++i){
         out[i] = tp.val_buf[out_vec.ptr + i].data;
     }
+
+
 
     // Clean tape
     ad_destroy_tape(&tp);

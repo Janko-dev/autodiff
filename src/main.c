@@ -22,27 +22,24 @@ int main(void){
 
     // Initialise multi-layer perceptron
     MLP nn = {0};
-    float learning_rate = 0.1f;
+    float learning_rate = 0.01f;
     mlp_init(&nn, learning_rate);
     
     // Add layers of neurons 
-    mlp_add_layer(&nn, 2, 6, "sigm");
-    mlp_add_layer(&nn, 6, 8, "relu");
-    mlp_add_layer(&nn, 8, 1, "relu");
+    mlp_add_layer(&nn, 2, 3, "tanh");
+    mlp_add_layer(&nn, 3, 1, "tanh");
 
     mlp_print(&nn);
+    ad_print_tape(&nn.params);
 
     // Train model and print loss
     printf("Training start...\n");
-    #define BATCH_SIZE 40
-    for (size_t n = 0; n < 50; ++n){
+    #define BATCH_SIZE 80
+    for (size_t n = 0; n < BATCH_SIZE; ++n){
         float loss = 0.0f;
-        for (size_t i = 0; i < BATCH_SIZE; ++i){
-            // float loss = 0;
-            size_t index = i % TRAINING_SIZE;
-            loss += mlp_fit(&nn, X[index], 2, Y+index, 1);
-            // for (size_t j = 0; j < TRAINING_SIZE; ++j){
-            // }
+        // nn.learning_rate = 1.0f - 0.9f * (float)n/(float)BATCH_SIZE;
+        for (size_t i = 0; i < TRAINING_SIZE; ++i){
+            loss += mlp_fit(&nn, X[i], 2, Y+i, 1);
         }
         printf("Average loss: %g\n", loss/BATCH_SIZE);
     }    
