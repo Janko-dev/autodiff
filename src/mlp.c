@@ -49,16 +49,14 @@ Vector mlp_forward_pass_layer(
         size_t res = ad_create(tp, 0.0f);
         for (size_t j = 0; j < mat.cols; ++j){
             res = ad_add(tp, 
-                bias.ptr + j,
-                ad_add(tp, 
-                    res,
-                    ad_mul(tp, 
-                        mat.ptr + j*mat.rows + i,
-                        vec.ptr + j)
-                    )
+                res,
+                ad_mul(tp, 
+                    mat.ptr + i*mat.cols + j,
+                    vec.ptr + j)
             );
-            res = a_fun(tp, res);
         }
+        res = ad_add(tp, res, bias.ptr + i);
+        res = a_fun(tp, res);
         // printf("%f\n", GET(res).data);
         GET(out.ptr + i).data = GET(res).data;
         GET(out.ptr + i).left_child = GET(res).left_child;
@@ -73,7 +71,7 @@ void mlp_print_mat(Tape* tp, Matrix mat){
     printf("shape (%d, %d)\n", mat.rows, mat.cols);
     for (size_t i = 0; i < mat.rows; ++i){
         for (size_t j = 0; j < mat.cols; ++j){
-            printf("[%f] ", GET(mat.ptr + j*mat.rows + i).data);
+            printf("[%f] ", GET(mat.ptr + i*mat.cols + j).data);
         }
         printf("\n");
     }
@@ -215,7 +213,7 @@ float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
         ad_create(&tp, 1.0f/(float)out.rows)
     );
 
-    printf("ASSERT out (%f), target (%f), loss (%f)\n", tp.val_buf[out.ptr].data, tp.val_buf[ys.ptr].data, tp.val_buf[loss].data);
+    // printf("ASSERT out (%f), target (%f), loss (%f)\n", tp.val_buf[out.ptr].data, tp.val_buf[ys.ptr].data, tp.val_buf[loss].data);
     
     // Backpropagation with autodiff
     ad_reverse(&tp, loss);
@@ -256,7 +254,7 @@ void mlp_predict(MLP* nn, float* xs, size_t xs_size, float* out, size_t out_size
 
     Vector out_vec = _predict(nn, &tp, xs, xs_size);
     
-    printf("ASSERT out (%f), target (%d), input (%g, %g)\n", tp.val_buf[out_vec.ptr].data, (size_t)xs[0] ^ (size_t)xs[1], xs[0], xs[1]);
+    // printf("ASSERT out (%f), target (%d), input (%g, %g)\n", tp.val_buf[out_vec.ptr].data, (size_t)xs[0] ^ (size_t)xs[1], xs[0], xs[1]);
 
     for (size_t i = 0; i < out_size; ++i){
         out[i] = tp.val_buf[out_vec.ptr + i].data;

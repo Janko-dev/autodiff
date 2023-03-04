@@ -3,7 +3,7 @@
 // For debugging purposes (such as printing the computation tree)
 // note that the order matters.
 const char* operators[] = {
-    "add ", "sub ", "mul ", "pow ", "tanh", "relu", "cons"
+    "add ", "sub ", "mul ", "pow ", "tanh", "relu", "sigm", "nil"
 };
 
 void ad_init_tape(Tape* tp) {
@@ -167,7 +167,7 @@ void ad_print_tree(Tape* tp, size_t y){
 
 void ad_print_tape(Tape* tp){
     for (size_t i = 0; i < tp->count; ++i){
-        printf("val: %g, index: %zu, left: %zu, right: %zu, op: %zu\n", 
-            tp->val_buf[i].data, i, tp->val_buf[i].left_child, tp->val_buf[i].right_child, tp->val_buf[i].op);
+        printf("val: %2g, index: %3zu, left: %3zu, right: %3zu, op: %s\n", 
+            tp->val_buf[i].data, i, tp->val_buf[i].left_child, tp->val_buf[i].right_child, operators[tp->val_buf[i].op]);
     }
 }
