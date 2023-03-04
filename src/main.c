@@ -18,37 +18,7 @@ float Y[TRAINING_SIZE] = {
     0.0f,
 };
 
-int main(){
-
-    Tape tp = {0};
-    ad_init_tape(&tp);
-
-    // The inputs x1, x2
-    size_t x1 = ad_create(&tp, -1.0f);
-    size_t x2 = ad_create(&tp, 2.0f);
-
-    // The params w1, w2, b
-    size_t w1 = ad_create(&tp, 4.0f);
-    size_t w2 = ad_create(&tp, -2.0f);
-    size_t b  = ad_create(&tp, .5f);
-
-    // Intermediate computations
-    size_t xw1 = ad_mul(&tp, x1, w1);
-    size_t xw2 = ad_mul(&tp, x2, w2);
-    size_t xw  = ad_add(&tp, xw1, xw2);
-    size_t xwb = ad_add(&tp, xw, b);
-
-    // The result 
-    size_t y = ad_tanh(&tp, xwb);
-
-    ad_reverse(&tp, y);
-    ad_print_tree(&tp, y);
-
-    ad_destroy_tape(&tp);
-    return 0;
-}
-
-int main2(void){
+int main(void){
 
     // Initialise multi-layer perceptron
     MLP nn = {0};
