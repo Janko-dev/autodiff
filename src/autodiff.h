@@ -23,7 +23,7 @@ typedef enum {
 } OpType;
 
 // Value struct behaving like a node in a graph
-// It is aware of its operator type and has a 
+// It is aware of its operator type and has a
 // reference to its operands in an array linked list
 typedef struct {
     float data;
@@ -31,6 +31,7 @@ typedef struct {
     OpType op;
     size_t left_child;
     size_t right_child;
+    size_t visited;
 } Value;
 
 // The tape struct is a dynamic array of values
@@ -42,14 +43,14 @@ typedef struct {
 } Tape;
 
 // Most params of the tape are Tape pointers 'tp'
-// which leads to the usefulness of this macro 
+// which leads to the usefulness of this macro
 #define GET(v) tp->val_buf[(v)]
 
 // The initial tape size.
 // recommended to be a multiple of 2
 #define INIT_TAPE_SIZE 8
 
-// Gradient tape functions 
+// Gradient tape functions
 void ad_init_tape(Tape* tape);
 void ad_destroy_tape(Tape* tape);
 void ad_print_tape(Tape* tp);
@@ -77,4 +78,3 @@ void ad_reverse(Tape* tp, size_t y);
 void ad_print_tree(Tape* tp, size_t y);
 
 #endif //_AUTODIFF_H
-

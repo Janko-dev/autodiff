@@ -26,7 +26,7 @@ size_t ad_create(Tape* tp, float value){
             exit(1);
         }
     }
-    
+
     Value* res = tp->val_buf + tp->count;
     res->data = value;
     res->grad = 0.0f;
@@ -101,11 +101,10 @@ size_t ad_sigm(Tape* tp, size_t a){
     return out;
 }
 
-// We propagate a value backwards 
+// We propagate a value backwards
 // by computing the local derivative of the value
-// with respect to the left and right operand children.   
-void _ad_reverse(Tape* tp, size_t y){
-    Value y_deref = GET(y);
+// with respect to the left and right operand children.
+void _ad_reverse(Tape* tp, Value y_deref){
     switch (y_deref.op){
         case SUB: {
             GET(y_deref.left_child).grad += y_deref.grad * 1.0f;
@@ -129,7 +128,7 @@ void _ad_reverse(Tape* tp, size_t y){
             GET(y_deref.left_child).grad += y_deref.grad * (1 - y_deref.data*y_deref.data);
         } break;
         case RELU: {
-            if (y_deref.data > 0) 
+            if (y_deref.data > 0)
                 GET(y_deref.left_child).grad += y_deref.grad * 1.0f;
         } break;
         case SIGM: {
@@ -137,17 +136,31 @@ void _ad_reverse(Tape* tp, size_t y){
         } break;
         default: break;
     }
+}
 
-    // We recurse to propagate the gradients to the left and right child of the value
-    if (y_deref.left_child != 0) _ad_reverse(tp, y_deref.left_child);
-    if (y_deref.right_child != 0) _ad_reverse(tp, y_deref.right_child);
+void _ad_topo(Tape *tp, Value ***list, Value *val, size_t* i) {
+    val->visited = 1;
+    if(val->left_child != 0 && !GET(val->left_child).visited) {
+        _ad_topo(tp, list, &GET(val->left_child), i);
+    }
+    if (val->right_child != 0 && !GET(val->right_child).visited) {
+        _ad_topo(tp, list, &GET(val->right_child), i);
+    }
+    (*list)[*i] = val;
+    (*i)++;
 }
 
 void ad_reverse(Tape* tp, size_t y){
-    // Initial gradient is always 1 
+    // Initial gradient is always 1
     // because the derivative of x w.r.t. x = 1
     GET(y).grad = 1.0;
-    _ad_reverse(tp, y);
+    size_t count = 0;
+    Value **list = malloc(tp->count * sizeof(Value));
+    _ad_topo(tp, &list, &GET(y), &count);
+    for (size_t i = count; i > 0; --i) {
+        _ad_reverse(tp, *(list[i - 1]));
+    }
+    free(list);
 }
 
 void _ad_print_tree(Tape* tp, size_t y, size_t indent){
@@ -167,7 +180,7 @@ void ad_print_tree(Tape* tp, size_t y){
 
 void ad_print_tape(Tape* tp){
     for (size_t i = 0; i < tp->count; ++i){
-        printf("val: %2g, index: %3zu, left: %3zu, right: %3zu, op: %s\n", 
+        printf("val: %2g, index: %3zu, left: %3zu, right: %3zu, op: %s\n",
             tp->val_buf[i].data, i, tp->val_buf[i].left_child, tp->val_buf[i].right_child, operators[tp->val_buf[i].op]);
     }
 }
