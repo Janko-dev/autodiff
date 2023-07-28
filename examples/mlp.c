@@ -1,10 +1,49 @@
-#include "mlp.h"
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include "../src/autodiff.h"
+
+// Vector and matrix structs that have a size_t ptr
+// that points to a value in a tape structure. 
+typedef struct {
+    size_t ptr;  
+    size_t rows;
+} Vector;
+
+typedef struct {
+    size_t ptr;
+    size_t rows;
+    size_t cols;
+} Matrix;
+
+// Layer consists of weights, biases, and an activation function.
+// The activation function can currently be one of the following:
+// - ReLu (ad_relu())
+// - Tanh (ad_tanh())
+// - Sigmoid (ad_sigm())
+typedef struct {
+    Matrix weights;
+    Vector biases;
+    size_t (*activation)(Tape* tp, size_t a);
+} Layer;
+
+// Multi-Layer Perceptron struct
+// It manages its own tape of parameters
+// that gets copied into a new tape at every start of the fitness function (mlp_fit)
+typedef struct {
+    Tape params;
+    Layer* layers;
+    size_t num_layers;
+    size_t max_layers;
+    float learning_rate;
+} MLP;
 
 // Returns a floating point number between -1 and 1
 float mlp_rand(){
     return ((float)rand() / (float)RAND_MAX) * 2.0 - 1.0;
 }
 
+// Vector is creating by consecutively creating leaf nodes in the computation graph.
 Vector mlp_create_vector(Tape* tp, size_t rows) {
     
     size_t ptr = ad_create(tp, mlp_rand());
@@ -18,6 +57,8 @@ Vector mlp_create_vector(Tape* tp, size_t rows) {
     };
 }
 
+// 2D Matrix is created by flattening the matrix into a 1D array and 
+// consecutively creating leaf nodes in the computation graph. 
 Matrix mlp_create_matrix(Tape* tp, size_t rows, size_t cols) {
     
     size_t ptr = ad_create(tp, mlp_rand());
@@ -29,42 +70,6 @@ Matrix mlp_create_matrix(Tape* tp, size_t rows, size_t cols) {
         .cols = cols,
         .ptr = ptr
     };
-}
-
-Vector mlp_forward_pass_layer(
-        Tape* tp, 
-        Matrix mat, 
-        Vector vec, 
-        Vector bias, 
-        size_t (*a_fun)(Tape*, size_t))
-    {
-
-    if (mat.cols != vec.rows || mat.rows != bias.rows) {
-        fprintf(stderr, "Columns of matrix do not match rows of vector\n");
-        exit(1);
-    }
-
-    Vector out = mlp_create_vector(tp, mat.rows);
-    for (size_t i = 0; i < mat.rows; ++i){
-        size_t res = ad_create(tp, 0.0f);
-        for (size_t j = 0; j < mat.cols; ++j){
-            res = ad_add(tp, 
-                res,
-                ad_mul(tp, 
-                    mat.ptr + i*mat.cols + j,
-                    vec.ptr + j)
-            );
-        }
-        res = ad_add(tp, res, bias.ptr + i);
-        res = a_fun(tp, res);
-        // printf("%f\n", GET(res).data);
-        GET(out.ptr + i).data = GET(res).data;
-        GET(out.ptr + i).left_child = GET(res).left_child;
-        GET(out.ptr + i).right_child = GET(res).right_child;
-        GET(out.ptr + i).op = GET(res).op;
-    }
-
-    return out;
 }
 
 void mlp_print_mat(Tape* tp, Matrix mat){
@@ -83,6 +88,7 @@ void mlp_print_vec(Tape* tp, Vector vec){
         printf("[%f]\n", GET(vec.ptr+i).data);
 }
 
+// Initialise MLP struct by providing learning rate
 void mlp_init(MLP* nn, float learning_rate){
     srand(time(NULL));
     nn->learning_rate = learning_rate;
@@ -114,6 +120,10 @@ void mlp_init_layer(Layer* layer, Tape* tp, size_t num_inputs, size_t num_neuron
     layer->biases  = mlp_create_vector(tp, num_neurons);
 }
 
+// Add a dense layer to the neural network by providing 
+// - the number of input nodes,
+// - the number of neurons in the layer, and 
+// - the activation function ("relu", "tanh", "sigm")
 void mlp_add_layer(MLP* nn, size_t num_inputs, size_t num_neurons, const char* activation_function){
     if (nn->num_layers >= nn->max_layers){
         nn->max_layers = Extend(nn->max_layers);
@@ -127,6 +137,50 @@ void mlp_add_layer(MLP* nn, size_t num_inputs, size_t num_neurons, const char* a
     nn->num_layers++;
 }
 
+// Forward pass through the components of a layer,
+// i.e., the input vector, the weight matrix, the bias vector, and the activation function
+Vector mlp_forward_pass_layer(
+        Tape* tp, 
+        Matrix mat, 
+        Vector vec, 
+        Vector bias, 
+        size_t (*a_fun)(Tape*, size_t))
+    {
+
+    if (mat.cols != vec.rows || mat.rows != bias.rows) {
+        fprintf(stderr, "Columns of matrix do not match rows of vector\n");
+        exit(1);
+    }
+    size_t* out_ptr = malloc(sizeof(size_t) * mat.rows);
+
+    for (size_t i = 0; i < mat.rows; ++i){
+        size_t res = ad_create(tp, 0.0f);
+        for (size_t j = 0; j < mat.cols; ++j){
+            res = ad_add(tp, 
+                res,
+                ad_mul(tp, 
+                    mat.ptr + i*mat.cols + j,
+                    vec.ptr + j)
+            );
+        }
+        res = ad_add(tp, res, bias.ptr + i);
+        res = a_fun(tp, res);
+        out_ptr[i] = res;
+    }
+
+    Vector out = mlp_create_vector(tp, mat.rows);
+    for (size_t i = 0; i < mat.rows; ++i){
+        GET(out.ptr + i).data = GET(out_ptr[i]).data;
+        GET(out.ptr + i).left_child = GET(out_ptr[i]).left_child;
+        GET(out.ptr + i).right_child = GET(out_ptr[i]).right_child;
+        GET(out.ptr + i).op = GET(out_ptr[i]).op;
+    }
+    free(out_ptr);
+
+    return out;
+}
+
+// Pass through all layers 
 Vector mlp_forward_pass(MLP* nn, Tape* tp, Vector xs){
     
     Vector out = xs;
@@ -162,29 +216,6 @@ Vector _predict(MLP* nn, Tape* tp, float* xs, size_t xs_size){
 
 float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
     
-    // // Copy over model params into new tape 
-    // Tape tp = {0};
-    // ad_init_tape(&tp);
-    // for (size_t i = 1; i < nn->params.count; ++i){
-    //     ad_create(&tp, nn->params.val_buf[i].data);
-    // }
-    
-    // // Create and fill input vector
-    // Vector xs = mlp_create_vector(&tp, X_size);
-    // for (size_t i = 0; i < X_size; ++i){
-    //     tp.val_buf[xs.ptr + i].data = X[i];
-    // }
-
-    // // Create and fill ground truth vector
-    // Vector ys = mlp_create_vector(&tp, Y_size);
-    // for (size_t i = 0; i < Y_size; ++i){
-    //     tp.val_buf[ys.ptr + i].data = Y[i];
-    // }
-
-    // // Forward pass
-    // Vector out = mlp_forward_pass(nn, &tp, xs);
-
-
     Tape tp = {0};
     ad_init_tape(&tp);
     
@@ -213,8 +244,6 @@ float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
         ad_create(&tp, 1.0f/(float)out.rows)
     );
 
-    // printf("ASSERT out (%f), target (%f), loss (%f)\n", tp.val_buf[out.ptr].data, tp.val_buf[ys.ptr].data, tp.val_buf[loss].data);
-    
     // Backpropagation with autodiff
     ad_reverse(&tp, loss);
 
@@ -223,10 +252,10 @@ float mlp_fit(MLP* nn, float* X, size_t X_size, float* Y, size_t Y_size){
         nn->params.val_buf[i].data -= nn->learning_rate * tp.val_buf[i].grad;
     }
 
-    // Safe loss value
+    // Save loss value
     float ret_loss = tp.val_buf[loss].data;
     
-    // Clean tape
+    // Destroy computation graph
     ad_destroy_tape(&tp);
 
     return ret_loss;
@@ -237,30 +266,11 @@ void mlp_predict(MLP* nn, float* xs, size_t xs_size, float* out, size_t out_size
     Tape tp = {0};
     ad_init_tape(&tp);
 
-    // // Copy over model params into new tape 
-    // for (size_t i = 1; i < nn->params.count; ++i){
-    //     ad_create(&tp, nn->params.val_buf[i].data);
-    // }
-    
-    // // Create and fill input vector
-    // Vector xs_vec = mlp_create_vector(&tp, xs_size);
-    // for (size_t i = 0; i < xs_size; ++i){
-    //     tp.val_buf[xs_vec.ptr + i].data = xs[i];
-    // }
-
-    // // Forward pass
-    // Vector out_vec = mlp_forward_pass(nn, &tp, xs_vec);
-
-
     Vector out_vec = _predict(nn, &tp, xs, xs_size);
     
-    // printf("ASSERT out (%f), target (%d), input (%g, %g)\n", tp.val_buf[out_vec.ptr].data, (size_t)xs[0] ^ (size_t)xs[1], xs[0], xs[1]);
-
     for (size_t i = 0; i < out_size; ++i){
         out[i] = tp.val_buf[out_vec.ptr + i].data;
     }
-
-
 
     // Clean tape
     ad_destroy_tape(&tp);
@@ -283,4 +293,66 @@ void mlp_print(MLP* nn){
         printf("\n");
     }
     printf("-------------------------------------\n");
+}
+
+#define TRAINING_SIZE 4
+
+// Input dataset for the XOR problem 
+float X[TRAINING_SIZE][2] = {
+    {0.0f, 0.0f},
+    {1.0f, 0.0f},
+    {0.0f, 1.0f},
+    {1.0f, 1.0f},
+};
+
+// Ground truth dataset for the XOR problem 
+float Y[TRAINING_SIZE] = {
+    0.0f, 
+    1.0f,
+    1.0f,
+    0.0f,
+};
+
+int main(void){
+
+    // Initialise multi-layer perceptron
+    MLP nn = {0};
+    float learning_rate = 1.5f;
+    mlp_init(&nn, learning_rate);
+    
+    // Add layers of neurons 
+    mlp_add_layer(&nn, 2, 4, "sigm");
+    mlp_add_layer(&nn, 4, 1, "sigm");
+
+    mlp_print(&nn);
+
+    // Train model and print average loss
+    printf("Training start...\n");
+    #define BATCH_SIZE 1000
+    float loss;
+    for (size_t n = 0; n < BATCH_SIZE; ++n){
+        loss = 0.0f;
+        for (size_t i = 0; i < TRAINING_SIZE; ++i){
+            loss += mlp_fit(&nn, X[i], 2, Y+i, 1);
+        }
+        printf("Average loss: %g\n", loss/TRAINING_SIZE);
+    }    
+    printf("...Training end\n");
+
+    // Prediction
+    float out1, out2, out3, out4;
+    mlp_predict(&nn, X[0], 2, &out1, 1);
+    mlp_predict(&nn, X[1], 2, &out2, 1);
+    mlp_predict(&nn, X[2], 2, &out3, 1);
+    mlp_predict(&nn, X[3], 2, &out4, 1);
+
+    printf("Prediction for input {0, 0} is %f\n", out1);
+    printf("Prediction for input {1, 0} is %f\n", out2);
+    printf("Prediction for input {0, 1} is %f\n", out3);
+    printf("Prediction for input {1, 1} is %f\n", out4);
+
+    // Destroy model 
+    mlp_destroy(&nn);
+    
+    return 0;
 }

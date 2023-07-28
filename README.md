@@ -1,6 +1,6 @@
 # Simple Automatic Differentiation library
 
-This repository contains the implementation of scalar-valued reverse mode `autodiff` written in the C language. I implemented autodiff in C for educational and recreational purposes. Languages that offer operator overloading and a garbage collector would be ideal for an autodiff implementation. Nonetheless, implementing autodiff in C allows for many interesting implementation details, such as using relative pointers.
+This repository contains the implementation of scalar-valued reverse mode `autodiff` written in the C language. I implemented autodiff in C for educational and recreational purposes. Languages that offer operator overloading and a garbage collector would be ideal for an autodiff implementation. Nonetheless, implementing autodiff in C allowed for many interesting implementation details, such as the use of a flattened directed acyclic graph which is sometimes referred to as `relative pointers`.
 
 ## What is `autodiff`?
 Automatic differentiation (or simply `autodiff`) is the key method used by sophisticated deep learning libraries (e.g. Pytorch and Tensorflow) to garner the gradients of arbitrary computations. The gradients are then used to perform backpropagation through an artificial neural network model. The key difference between this implementation and that of Pytorch or Tensorflow is that this implementation considers gradients of scalar values, while Pytorch/Tensorflow operate on multi-dimensional arrays, and thus consider gradients of tensor values. As opposed to other methods for computing gradients, the strength of autodiff lies in accuracy and simplicity to implement. We can distinguish two variants of autodiff, forward mode and reverse mode. This repository is concerned with the reverse mode autodiff, which means that the derivative of a result with respect to its inputs is obtained by starting at the result and propagating the gradient backwards through previous computations.  
@@ -129,7 +129,8 @@ Consider the memory management functions and the reverse mode function:
 - `ad_init_tape(Tape* tape)`: initialises the dynamic array (tape) for use. 
 - `ad_destroy_tape(Tape* tape)`: destroys the dynamic array (tape).
 - `ad_reverse(Tape* tp, size_t y)`: computes the gradients of every value that is connected to the graph of `y` with respect to `y` and propagates the gradients using the chain rule.
-
+- `ad_reverse_toposort(Tape* tp, size_t y)`: Before computing the gradients of the computation graph, the nodes are first topologically sorted, which means that the children of a node are first considered before their parent is considered. Traversing the computation graph in topological reverse order ensures that every node is visited exactly once. This is only needed when the internal structure of the tape is manipulated. Otherwise, use the `ad_reverse(Tape* tp, size_t y)` function. 
+  
 Consider the arithmatic functions:
 - `ad_create(Tape* tp, float value)`: creates a value on the tape.
 - `ad_add(Tape* tp, size_t a, size_t b)`: creates a value on the tape based on the addition of two values on the tape pointed to by index. 
@@ -147,11 +148,28 @@ Consider the debugging functions:
 - `ad_print_tree(Tape* tp, size_t y)`: print the computation graph of `y`.
 
 ## Usage
-The build system is `make` and there are no external dependencies. The implementation of autodiff is contained in `autodiff.c` and `autodiff.h`. Furthermore, I included an example using my implementation for a multi-layer perceptron. The code for this example can be found in `mlp.c` and `mlp.h`. The example shows the `autodiff` library in action to solve the `XOR` problem.  
+The build system is `make` and there are no external dependencies. The implementation of autodiff is contained in `autodiff.c` and `autodiff.h`. Run the following for a demo example.
 ```
 $ make 
 $ ./autodiff
 ```
+A more sophisticated example is also included, in which a simple multi-layer perceptron is used to solve the `XOR` problem. The code for this example can be found in `examples/mlp.c`. 
+```
+$ make mlp_example
+$ ./mlp_demo
+.
+.
+.
+Average loss: 0.000727057
+Average loss: 0.000726102
+Average loss: 0.000725149
+...Training end
+Prediction for input {0, 0} is 0.016746
+Prediction for input {1, 0} is 0.976343
+Prediction for input {0, 1} is 0.972189
+Prediction for input {1, 1} is 0.035648
+```
+
 
 ## Example
 

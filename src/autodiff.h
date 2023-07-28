@@ -72,6 +72,7 @@ size_t ad_sigm(Tape* tp, size_t a);
 
 // Compute gradients of value in reverse mode
 void ad_reverse(Tape* tp, size_t y);
+void ad_reverse_toposort(Tape* tp, size_t y);
 
 // Print computation tree
 void ad_print_tree(Tape* tp, size_t y);
